@@ -1,12 +1,12 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 
-st.title("Dashboard Monitoring Arsip")
-
-# Menginisialisasi koneksi gsheets dari secrets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Baca data langsung tanpa menulis URL sama sekali
-df = conn.read(ttl="5m")
+# Ambil string URL langsung dari secrets.toml
+sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+
+# Masukkan URL ke parameter 'spreadsheet'
+df = conn.read(spreadsheet=sheet_url, ttl="5m")
 
 st.dataframe(df)
