@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+streamlit-plotly-events
+st-gsheets-connection
+jinja2
+numpy
+requests
+folium
+streamlit-folium
