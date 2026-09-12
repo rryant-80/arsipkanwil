@@ -133,37 +133,78 @@ if st.session_state.active_menu == "Dashboard":
                 </div>
             """, unsafe_allow_html=True)
 
-    # --- GRAFIK DRILL-DOWN (Lemari -> Rak -> Bundel) ---
+    # --- GRAFIK DRILL-DOWN (3 Baris ke Bawah: Lemari -> Rak -> Bundel) ---
     st.markdown("---")
-    st.subheader("📈 Distribusi Arsip (Drill-down)")
-    
-    # UI Filter interaktif untuk simulasi Drill-down
-    col_filter1, col_filter2 = st.columns(2)
-    
-    with col_filter1:
-        lemari_list = ["Semua Lemari"] + sorted(df['lemari'].dropna().astype(str).unique().tolist())
-        selected_lemari = st.selectbox("Pilih Lemari:", lemari_list)
+    st.subheader("📈 Distribusi Arsip Bertingkat")
 
-    if selected_lemari == "Semua Lemari":
-        # Tampilkan Grafik Lemari
-        df_lemari = df.groupby('lemari')['bundel'].nunique().reset_index(name='Jumlah Bundel')
-        fig = px.bar(df_lemari, x='lemari', y='Jumlah Bundel', text_auto=True, title="Jumlah Bundel pada Masing-masing Lemari", color_discrete_sequence=['#3182CE'])
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        with col_filter2:
-            rak_list = ["Semua Rak"] + sorted(df[df['lemari'] == selected_lemari]['rak'].dropna().astype(str).unique().tolist())
-            selected_rak = st.selectbox(f"Pilih Rak di {selected_lemari}:", rak_list)
+    # ---------------------------------------------------------
+    # BARIS 1: GRAFIK LEMARI (Selalu Tampil secara Default)
+    # ---------------------------------------------------------
+    df_lemari = df.groupby('lemari')['bundel'].nunique().reset_index(name='Jumlah Bundel')
+    fig_lemari = px.bar(
+        df_lemari, 
+        x='lemari', 
+        y='Jumlah Bundel', 
+        text_auto=True, 
+        title="1. Jumlah Bundel per Lemari", 
+        color_discrete_sequence=['#3182CE']
+    )
+    # Hilangkan label judul sumbu x dan y
+    fig_lemari.update_xaxes(title_text="")
+    fig_lemari.update_yaxes(title_text="")
+    
+    st.plotly_chart(fig_lemari, use_container_width=True)
+
+    # Filter Pilihan Lemari untuk Membuka Grafik Rak
+    lemari_options = ["-- Pilih Lemari untuk Detail Rak --"] + sorted(df['lemari'].dropna().astype(str).unique().tolist())
+    selected_lemari = st.selectbox("Pilih Lemari:", lemari_options, key="select_lemari")
+
+    # ---------------------------------------------------------
+    # BARIS 2: GRAFIK RAK (Hanya muncul jika Lemari dipilih)
+    # ---------------------------------------------------------
+    if selected_lemari != "-- Pilih Lemari untuk Detail Rak --":
+        df_filtered_lemari = df[df['lemari'].astype(str) == selected_lemari]
+        df_rak = df_filtered_lemari.groupby('rak')['bundel'].nunique().reset_index(name='Jumlah Bundel')
+        
+        fig_rak = px.bar(
+            df_rak, 
+            x='rak', 
+            y='Jumlah Bundel', 
+            text_auto=True, 
+            title=f"2. Jumlah Bundel per Rak (di {selected_lemari})", 
+            color_discrete_sequence=['#009688']
+        )
+        fig_rak.update_xaxes(title_text="")
+        fig_rak.update_yaxes(title_text="")
+        
+        st.plotly_chart(fig_rak, use_container_width=True)
+
+        # Filter Pilihan Rak untuk Membuka Grafik Bundel
+        rak_options = ["-- Pilih Rak untuk Detail Bundel --"] + sorted(df_filtered_lemari['rak'].dropna().astype(str).unique().tolist())
+        selected_rak = st.selectbox(f"Pilih Rak di {selected_lemari}:", rak_options, key="select_rak")
+
+        # ---------------------------------------------------------
+        # BARIS 3: GRAFIK BUNDEL (Hanya muncul jika Rak dipilih)
+        # ---------------------------------------------------------
+        if selected_rak != "-- Pilih Rak untuk Detail Bundel --":
+            df_filtered_rak = df_filtered_lemari[df_filtered_lemari['rak'].astype(str) == selected_rak]
             
-        if selected_rak == "Semua Rak":
-            # Tampilkan Grafik Rak
-            df_rak = df[df['lemari'] == selected_lemari].groupby('rak')['bundel'].nunique().reset_index(name='Jumlah Bundel')
-            fig = px.bar(df_rak, x='rak', y='Jumlah Bundel', text_auto=True, title=f"Jumlah Bundel pada Rak di {selected_lemari}", color_discrete_sequence=['#009688'])
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            # Tampilkan Grafik Bundel (Jumlah Dokumen)
-            df_bundel = df[(df['lemari'] == selected_lemari) & (df['rak'] == selected_rak)].groupby('bundel').size().reset_index(name='Jumlah Dokumen')
-            fig = px.bar(df_bundel, x='bundel', y='Jumlah Dokumen', text_auto=True, title=f"Jml Dokumen per Bundel di Rak {selected_rak} ({selected_lemari})", color_discrete_sequence=['#7B00D3'])
-            st.plotly_chart(fig, use_container_width=True)
+            # Menghitung jumlah dokumen di masing-masing bundel
+            col_bundel_name = 'bundel' if 'bundel' in df.columns else 'id_bundel'
+            df_bundel = df_filtered_rak.groupby(col_bundel_name).size().reset_index(name='Jumlah Dokumen')
+            
+            fig_bundel = px.bar(
+                df_bundel, 
+                x=col_bundel_name, 
+                y='Jumlah Dokumen', 
+                text_auto=True, 
+                title=f"3. Jumlah Dokumen per Bundel (Rak {selected_rak} - {selected_lemari})", 
+                color_discrete_sequence=['#7B00D3']
+            )
+            fig_bundel.update_xaxes(title_text="")
+            fig_bundel.update_yaxes(title_text="")
+            
+            st.plotly_chart(fig_bundel, use_container_width=True)
 
 # ---------------------------------------------------------
 # 4. HALAMAN LAINNYA
